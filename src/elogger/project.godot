@@ -22,7 +22,7 @@ config/icon="res://icon.svg"
 
 [dotnet]
 
-project/assembly_name="ELogger"
+project/assembly_name="eLogger"
 
 [editor_plugins]
 
