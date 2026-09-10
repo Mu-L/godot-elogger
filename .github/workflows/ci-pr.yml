@@ -35,7 +35,7 @@ jobs:
 
       - name: Build
         working-directory: src/elogger
-        run: dotnet build ELogger.sln --configuration Debug
+        run: dotnet build eLogger.sln --configuration Debug
 
       - name: Rebuild Godot project cache
         working-directory: src/elogger
@@ -46,4 +46,4 @@ jobs:
         working-directory: src/elogger
         run: |
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" \
-            dotnet test ELogger.sln --configuration Debug --no-build --settings .runsettings --verbosity normal -m:1
+            dotnet test eLogger.sln --configuration Debug --no-build --settings .runsettings --verbosity normal -m:1

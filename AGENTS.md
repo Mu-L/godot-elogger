@@ -6,11 +6,11 @@ This file provides guidance to Codex and other coding agents working in this rep
 
 eLogger is a [ZLogger](https://github.com/Cysharp/ZLogger) (zero-allocation structured logging) integration for Godot 4.x using C#/.NET. It ships as a Godot editor plugin that depends on the ePlugin framework (also vendored here).
 
-Target runtimes: Godot 4.x, .NET 8+. The dev project itself pins the latest Godot release (see `src/elogger/ELogger.csproj`).
+Target runtimes: Godot 4.x, .NET 8+. The dev project itself pins the latest Godot release (see `src/elogger/eLogger.csproj`).
 
 ## Commands
 
-Run all commands from `src/elogger/`, the Godot project root where `ELogger.csproj` lives.
+Run all commands from `src/elogger/`, the Godot project root where `eLogger.csproj` lives.
 
 ### Build
 
@@ -68,7 +68,7 @@ ePlugin has its own lightweight logging interfaces (`Enaweg.Plugin.Logging.ILogg
 
 ### eLogger plugin (`addons/eLogger/`)
 
-`ELoggerPlugin.CreateRecipe` registers the `ZLogger` and `ZString` NuGet packages and exposes the `.src` directory, which contains the runtime source files. Because the plugin is enabled in this development project, those packages (`ZLogger` 2.5.10 and `ZString` 2.6.0) appear in `ELogger.csproj`, and the directory exists as `src/` on disk.
+`ELoggerPlugin.CreateRecipe` registers the `ZLogger` and `ZString` NuGet packages and exposes the `.src` directory, which contains the runtime source files. Because the plugin is enabled in this development project, those packages (`ZLogger` 2.5.10 and `ZString` 2.6.0) appear in `eLogger.csproj`, and the directory exists as `src/` on disk.
 
 Two `IAsyncLogProcessor` implementations handle ZLogger-to-Godot routing:
 

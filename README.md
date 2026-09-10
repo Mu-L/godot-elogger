@@ -79,8 +79,8 @@ To build and run the tests locally:
 
 ```bash
 cd src/elogger
-dotnet build "ELogger.sln" --configuration Debug
-dotnet test "ELogger.sln" --configuration Debug --settings .runsettings
+dotnet build "eLogger.sln" --configuration Debug
+dotnet test "eLogger.sln" --configuration Debug --settings .runsettings
 ```
 
 Tests use [gdUnit4](https://github.com/MikeSchulze/gdUnit4). A Godot .NET executable must be available through `GODOT_BIN` when running the gdUnit4 test runner:
