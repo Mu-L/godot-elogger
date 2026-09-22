@@ -179,7 +179,13 @@ public class ZLoggerGodotDebugLoggerProvider : ILoggerProvider, ISupportExternal
         if (options.EPluginIntegration)
         {
 #if TOOLS
-            EGlobal.Instance.SwitchLogging(new EPluginLoggerFactory(this));
+            // ePlugin only exists while the editor is running its plugins. In a game build (or when the game is run
+            // from the editor, which still compiles with TOOLS defined) EGlobal has no plugin context, so switching
+            // its logging is not possible and must be skipped instead of throwing.
+            if (EGlobal.Instance.IsValid())
+            {
+                EGlobal.Instance.SwitchLogging(new EPluginLoggerFactory(this));
+            }
 #endif
         }
     }
