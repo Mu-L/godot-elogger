@@ -80,6 +80,31 @@ public partial class EngineErrorRoutingTest
         AssertThat(sink.Messages.Count(m => m.Contains($"app-message-{marker}"))).IsEqual(1);
     }
 
+    [TestCase]
+    public void EngineOutputCanBeFilteredOutWithoutLosingEngineErrors()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var sink = new MemorySink();
+
+        using (var factory = LoggerFactory.Create(logging =>
+               {
+                   logging.SetMinimumLevel(LogLevel.Trace);
+                   logging.AddFilter("Godot.Output", LogLevel.None);
+                   logging.AddZLoggerGodotDebug(o => o.EPluginIntegration = false);
+                   logging.AddZLoggerLogProcessor(sink);
+               }))
+        {
+            factory.CreateLogger("warmup");
+
+            GD.Print($"engine-print-{marker}");
+            GD.PushError($"engine-error-{marker}");
+        }
+
+        // Splitting engine messages by category is what makes the GD.Print mirror filterable on its own.
+        AssertThat(sink.Messages.Any(m => m.Contains($"engine-error-{marker}"))).IsTrue();
+        AssertThat(sink.Messages.Any(m => m.Contains($"engine-print-{marker}"))).IsFalse();
+    }
+
     sealed class MemorySink : IAsyncLogProcessor
     {
         readonly IZLoggerFormatter formatter = new ZLoggerOptions().CreateFormatter();

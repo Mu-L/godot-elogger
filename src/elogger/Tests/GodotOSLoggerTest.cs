@@ -112,7 +112,9 @@ public partial class GodotOSLoggerTest
         var accessor = provider.CreateEngineLoggerAccessor(null);
 
         // The accessor runs per engine message; it must not allocate a logger each time.
-        AssertBool(ReferenceEquals(accessor(), accessor())).IsTrue();
+        AssertBool(ReferenceEquals(accessor("Godot.Engine"), accessor("Godot.Engine"))).IsTrue();
+        // Different categories must not share a logger.
+        AssertBool(ReferenceEquals(accessor("Godot.Engine"), accessor("Godot.Shader"))).IsFalse();
     }
 
     [TestCase]
@@ -125,7 +127,7 @@ public partial class GodotOSLoggerTest
 
         // An engine error racing with disposal must not push ObjectDisposedException into a Godot callback.
         // This throws, and so fails the test, if the accessor is not disposal-safe.
-        AssertThat(accessor()).IsNotNull();
+        AssertThat(accessor("Godot.Engine")).IsNotNull();
     }
 
     [TestCase]
@@ -139,7 +141,83 @@ public partial class GodotOSLoggerTest
         // Throws out of the Godot callback, and so fails the test, if the fallback is not disposal-safe.
         LogError(sut, code: "after dispose", rationale: "", errorType: ErrorType.Error);
 
-        AssertBool(ReferenceEquals(provider.CreateEngineLoggerAccessor(null)(), NullLogger.Instance)).IsTrue();
+        AssertBool(ReferenceEquals(provider.CreateEngineLoggerAccessor(null)("Godot.Engine"),
+            NullLogger.Instance)).IsTrue();
+    }
+
+    [TestCase]
+    public void LogError_UsesACategoryPerGodotErrorType()
+    {
+        var recorder = new CategoryRecorder();
+        var sut = new GodotOSLogger(recorder.For);
+
+        LogError(sut, code: "engine", rationale: "", errorType: ErrorType.Error);
+        LogError(sut, code: "warn", rationale: "", errorType: ErrorType.Warning);
+        LogError(sut, code: "script", rationale: "", errorType: ErrorType.Script);
+        LogError(sut, code: "shader", rationale: "", errorType: ErrorType.Shader);
+
+        AssertThat(recorder.Entries).ContainsExactly(
+            ("Godot.Engine", LogLevel.Error, "engine"),
+            ("Godot.Engine", LogLevel.Warning, "warn"),
+            ("Godot.Script", LogLevel.Error, "script"),
+            ("Godot.Shader", LogLevel.Error, "shader"));
+    }
+
+    [TestCase]
+    public void LogMessage_UsesTheOutputCategory()
+    {
+        var recorder = new CategoryRecorder();
+        var sut = new GodotOSLogger(recorder.For);
+
+        sut._LogMessage("printed", false);
+        sut._LogMessage("printed to stderr", true);
+
+        AssertThat(recorder.Entries).ContainsExactly(
+            ("Godot.Output", LogLevel.Information, "printed"),
+            ("Godot.Output", LogLevel.Error, "printed to stderr"));
+    }
+
+    [TestCase]
+    public void Categories_HonourTheConfiguredPrefix()
+    {
+        var recorder = new CategoryRecorder();
+        var sut = new GodotOSLogger(recorder.For, "MyGame.Engine");
+
+        LogError(sut, code: "shader", rationale: "", errorType: ErrorType.Shader);
+        sut._LogMessage("printed", false);
+
+        AssertThat(recorder.Entries).ContainsExactly(
+            ("MyGame.Engine.Shader", LogLevel.Error, "shader"),
+            ("MyGame.Engine.Output", LogLevel.Information, "printed"));
+    }
+
+    sealed class CategoryRecorder
+    {
+        public List<(string Category, LogLevel Level, string Message)> Entries { get; } = new();
+
+        public ILogger For(string category) => new CategoryLogger(this, category);
+
+        sealed class CategoryLogger : ILogger
+        {
+            readonly string category;
+            readonly CategoryRecorder owner;
+
+            public CategoryLogger(CategoryRecorder owner, string category)
+            {
+                this.owner = owner;
+                this.category = category;
+            }
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                owner.Entries.Add((category, logLevel, formatter(state, exception)));
+            }
+        }
     }
 
     static void LogError(GodotOSLogger sut, string code, string rationale, ErrorType errorType) =>
