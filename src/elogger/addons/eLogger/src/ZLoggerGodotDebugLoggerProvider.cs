@@ -42,9 +42,6 @@ public static class ZLoggerGodotExtensions
 public class GodotDebugLogProcessor : IAsyncLogProcessor
 {
     [ThreadStatic] static ArrayBufferWriter<byte>? bufferWriter;
-    [ThreadStatic] static bool isWritingToGodot;
-
-    internal static bool IsWritingToGodot => isWritingToGodot;
 
     readonly ZLoggerGodotDebugOptions options;
     readonly IZLoggerFormatter formatter;
@@ -74,26 +71,23 @@ public class GodotDebugLogProcessor : IAsyncLogProcessor
                     $"{msg}{Environment.NewLine}{DiagnosticsHelper.CleanupStackTrace(stacktrace)}{Environment.NewLine}---";
             }
 
-            var wasWritingToGodot = isWritingToGodot;
-            isWritingToGodot = true;
-            try
+            if (context is not null)
             {
-                switch (log.LogInfo.LogLevel)
-                {
-                    case LogLevel.Error or LogLevel.Critical:
-                        GD.PushError(context is not null ? $"(#{context.GetInstanceId()}) {msg}" : msg);
-                        break;
-                    case LogLevel.Warning:
-                        GD.PushWarning(context is not null ? $"(#{context.GetInstanceId()}) {msg}" : msg);
-                        break;
-                    default:
-                        GD.Print(context is not null ? $"(#{context.GetInstanceId()}) {msg}" : msg);
-                        break;
-                }
+                msg = $"(#{context.GetInstanceId()}) {msg}";
             }
-            finally
+
+            using var _ = GodotLogGuard.Enter();
+            switch (log.LogInfo.LogLevel)
             {
-                isWritingToGodot = wasWritingToGodot;
+                case LogLevel.Error or LogLevel.Critical:
+                    GD.PushError(msg);
+                    break;
+                case LogLevel.Warning:
+                    GD.PushWarning(msg);
+                    break;
+                default:
+                    GD.Print(msg);
+                    break;
             }
         }
         finally
@@ -118,7 +112,7 @@ internal sealed partial class GodotOSLogger(ILogger logger) : Godot.Logger
         bool editorNotify, int errorType, Array<ScriptBacktrace> scriptBacktraces)
     {
         base._LogError(function, file, line, code, rationale, editorNotify, errorType, scriptBacktraces);
-        if (GodotDebugLogProcessor.IsWritingToGodot)
+        if (GodotLogGuard.IsWriting)
         {
             return;
         }
@@ -143,7 +137,7 @@ internal sealed partial class GodotOSLogger(ILogger logger) : Godot.Logger
     public override void _LogMessage(string message, bool error)
     {
         base._LogMessage(message, error);
-        if (GodotDebugLogProcessor.IsWritingToGodot)
+        if (GodotLogGuard.IsWriting)
         {
             return;
         }

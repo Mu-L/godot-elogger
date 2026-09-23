@@ -30,6 +30,7 @@ public sealed class GodotLogProcessor : IAsyncLogProcessor
         {
             var msg = FormatToString(log, formatter);
 
+            using var _ = GodotLogGuard.Enter();
             switch (log.LogInfo.LogLevel)
             {
                 case LogLevel.Trace:
