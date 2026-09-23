@@ -73,6 +73,8 @@ ePlugin has its own lightweight logging interfaces (`Enaweg.Plugin.Logging.ILogg
 
 `ZLoggerGodotDebugLoggerProvider` is the main provider consumers add via `logging.AddZLoggerGodotDebug(...)`. On construction it also installs a `GodotOSLogger` (subclassing `Godot.Logger`) to intercept native engine errors/warnings and feed them back into ZLogger.
 
+`GodotOSLogger` logs through the application's `ILoggerFactory` (resolved lazily from the `IServiceProvider`, because the factory depends on every `ILoggerProvider`), so engine messages reach every configured sink rather than just this provider. Each Godot error type maps to its own category — `Godot.Engine`, `Godot.Script`, `Godot.Shader` and `Godot.Output` under `EngineCategoryPrefix` — with the loggers cached per category. `GodotLogGuard` stops output a processor just wrote from being captured and logged a second time.
+
 **ePlugin integration**: when `ZLoggerGodotDebugOptions.EPluginIntegration` is `true` (the default), the provider calls `EGlobal.Instance.SwitchLogging(new EPluginLoggerFactory(this))`, replacing ePlugin's internal `GodotConsoleLogger` with one backed by ZLogger. `EPluginLoggerFactory` and `EPluginLogger` are the bridge adapters between ePlugin's `ILoggerFactory`/`ILogger` and ZLogger's `ILoggerProvider`.
 
 ### Key design note — `#if TOOLS` guards
