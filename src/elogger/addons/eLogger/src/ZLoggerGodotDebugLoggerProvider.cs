@@ -117,19 +117,18 @@ internal sealed partial class GodotOSLogger(ILogger logger) : Godot.Logger
             return;
         }
 
+        // Godot puts the failing expression in "code" and the optional explanatory message in "rationale".
+        // GD.PushError/GD.PushWarning and the ERR_*_MSG macros leave "rationale" empty, so preferring it
+        // unconditionally logged blank entries. Mirror the engine's own Logger::log_error and fall back to "code".
+        var details = string.IsNullOrEmpty(rationale) ? code : rationale;
+
         switch (errorType)
         {
-            case (int)ErrorType.Error:
-                logger.ZLogError($"{rationale}", null, function, file, line);
-                break;
-            case (int)ErrorType.Script:
-                logger.ZLogError($"{rationale}", null, function, file, line);
-                break;
-            case (int)ErrorType.Shader:
-                logger.ZLogError($"{rationale}", null, function, file, line);
+            case (int)ErrorType.Error or (int)ErrorType.Script or (int)ErrorType.Shader:
+                logger.ZLogError($"{details}", null, function, file, line);
                 break;
             case (int)ErrorType.Warning:
-                logger.ZLogWarning($"{rationale}", null, function, file, line);
+                logger.ZLogWarning($"{details}", null, function, file, line);
                 break;
         }
     }
