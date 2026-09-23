@@ -6,9 +6,14 @@ namespace Enaweg.Logger;
 /// Tracks whether a log processor is currently writing to Godot's output on this thread.
 /// <para>
 /// <see cref="GodotOSLogger" /> is installed into the engine and turns every engine message back into a ZLogger
-/// entry. Without this guard a processor's own <c>GD.Print</c> would be picked up again and routed back into the
-/// same logger factory, recursing until the stack overflows. Every processor that writes to Godot must enter the
-/// guard around those writes, and the OS logger must ignore messages while it is held.
+/// entry. Without this flag a processor's own <c>GD.Print</c> would come back through the OS logger and be logged
+/// a second time. Every processor that writes to Godot enters the guard around those writes, and the OS logger
+/// ignores messages while it is held.
+/// </para>
+/// <para>
+/// This does not exist to prevent unbounded recursion: Godot 4.7.2 silently discards log output emitted from
+/// inside a logger callback, so a missing guard degrades into a duplicate entry at worst, never a stack overflow.
+/// The guard makes that independent of engine internals we do not control.
 /// </para>
 /// </summary>
 internal static class GodotLogGuard
