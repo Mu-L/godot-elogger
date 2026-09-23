@@ -6,7 +6,8 @@ This file provides guidance to Codex and other coding agents working in this rep
 
 eLogger is a [ZLogger](https://github.com/Cysharp/ZLogger) (zero-allocation structured logging) integration for Godot 4.x using C#/.NET. It ships as a Godot editor plugin that depends on the ePlugin framework (also vendored here).
 
-Target runtimes: Godot 4.x, .NET 8+. The dev project itself pins the latest Godot release (see `src/elogger/eLogger.csproj`).
+Target runtimes: Godot 4.5+, .NET 8+. 4.5 is the floor because `GodotOSLogger` subclasses `Godot.Logger`, which was
+first exposed to scripting in 4.5. The dev project itself pins the latest Godot release (see `src/elogger/eLogger.csproj`).
 
 ## Commands
 
@@ -20,7 +21,14 @@ dotnet build
 
 ### Run tests
 
-Tests require a Godot binary:
+Tests require a Godot binary. CI runs them through `dotnet test`:
+
+```sh
+export GODOT_BIN=/path/to/godot
+dotnet test eLogger.sln --configuration Debug --settings .runsettings
+```
+
+The gdUnit4 shell runner is the alternative:
 
 ```sh
 export GODOT_BIN=/path/to/godot
@@ -30,13 +38,13 @@ export GODOT_BIN=/path/to/godot
 ./addons/gdUnit4/runtest.sh --godot_binary /path/to/godot
 ```
 
-To run a single test suite, pass it as an extra argument to the script; it is forwarded to the gdUnit4 GDScript runner:
+To run a single test suite, pass it as an extra argument to the script; extra arguments are forwarded to the gdUnit4 GDScript runner, where `-a`/`--add` selects a suite or directory:
 
 ```sh
-./addons/gdUnit4/runtest.sh --godot_binary /path/to/godot -s res://Tests/TestLogging.cs
+./addons/gdUnit4/runtest.sh --godot_binary /path/to/godot -a res://Tests/GodotOSLoggerTest.cs
 ```
 
-Tests live in `src/elogger/Tests/`. gdUnit4 discovers them there via `[gdunit4] settings/test/test_lookup_folder` in `project.godot`. C# test support comes from the `gdUnit4.api` and `gdUnit4.test.adapter` NuGet packages plus the vendored gdUnit4 addon (v6.0.0).
+Tests live in `src/elogger/Tests/`. gdUnit4 discovers them there via `[gdunit4] settings/test/test_lookup_folder` in `project.godot`. C# test support comes from the `gdUnit4.api` and `gdUnit4.test.adapter` NuGet packages plus the vendored gdUnit4 addon (v6.2.1).
 
 ## Architecture
 
@@ -44,7 +52,7 @@ Tests live in `src/elogger/Tests/`. gdUnit4 discovers them there via `[gdunit4] 
 
 `src/elogger/addons/` contains two distinct plugins that are always co-deployed:
 
-- **`ePlugin/`** — the plugin lifecycle framework (vendored at v0.5.4, upstream: [godot-epluginframework](https://github.com/enaweg/godot-epluginframework)). It is the dependency; it has no knowledge of ZLogger.
+- **`ePlugin/`** — the plugin lifecycle framework (vendored at v0.7.0, upstream: [godot-epluginframework](https://github.com/enaweg/godot-epluginframework)). It is the dependency; it has no knowledge of ZLogger.
 - **`eLogger/`** — the ZLogger-to-Godot bridge. It depends on ePlugin.
 
 Godot 4.4+ generates a `.uid` sidecar file next to each script or resource. Leave these files alone and let Godot manage them.

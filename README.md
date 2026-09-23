@@ -5,7 +5,6 @@
 **Zero-allocation text and structured logging with [ZLogger](https://github.com/Cysharp/ZLogger) for [Godot](https://godotengine.org/).**
 
 [![CI](https://github.com/enaweg/godot-elogger/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/enaweg/godot-elogger/actions/workflows/ci-pr.yml)
-![Godot 4.4](https://img.shields.io/badge/Godot-v4.4-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
 ![Godot 4.5](https://img.shields.io/badge/Godot-v4.5-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
 ![Godot 4.6](https://img.shields.io/badge/Godot-v4.6-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
 ![Godot 4.7.2](https://img.shields.io/badge/Godot-v4.7.2-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
@@ -23,7 +22,8 @@ The current CI-tested configuration uses:
 + [Godot 4.7.2 .NET](https://godotengine.org/download/archive/4.7.2-stable/)
 + [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
-The project targets `net8.0`.
+The project targets `net8.0`. Godot **4.5** is the minimum supported version: engine message interception
+subclasses `Godot.Logger`, which was first exposed to scripting in 4.5.
 
 ## Installation
 
@@ -36,9 +36,14 @@ Enabling eLogger adds the required `ZLogger` and `ZString` NuGet packages to the
 ## Features
 
 + [ZLogger](https://github.com/Cysharp/ZLogger) integration for Godot: zero-allocation structured logging through `Microsoft.Extensions.Logging`.
-+ Routes log messages to Godot's output panel and error/warning overlays.
-+ Captures native engine errors and warnings, including script errors, shader errors, and `OS` messages, and feeds them back through ZLogger.
-+ Optional integration with [ePlugin](https://github.com/enaweg/godot-epluginframework) logging, so plugin lifecycle messages can also be handled by ZLogger.
++ Routes log messages to Godot's output panel and error/warning overlays — `GD.Print` for informational levels, `GD.PushWarning` and `GD.PushError` for warnings and errors, so they show up in the editor's Debugger dock.
++ Captures native engine diagnostics — engine errors and warnings, script errors, shader errors, and everything printed through `GD.Print` / `GD.PrintErr` — and feeds them back through ZLogger, so engine output reaches the file, JSON, or network sinks you configured rather than only the editor console.
++ Logs intercepted engine messages under a category per diagnostic type (`Godot.Engine`, `Godot.Script`, `Godot.Shader`, `Godot.Output`), so standard `AddFilter` rules can silence or level-limit one kind or all of them. The prefix is configurable.
++ Prefixes a message with the emitting object's instance ID when the log entry carries a `GodotObject` as its ZLogger context.
++ Cleans up exception stack traces: ZLogger and `Microsoft.Extensions.Logging` frames are dropped, types are printed in C# notation, and source locations are rewritten to `res://` paths with line numbers.
++ Configured through `ZLoggerGodotDebugOptions`, which derives from `ZLoggerOptions` — custom formatters, JSON output, timestamps, and `IncludeScopes` all work as they do in plain ZLogger. The provider implements `ISupportExternalScope`, so `BeginScope` state flows through. It is registered under the `ZLoggerGodotDebug` provider alias for configuration-driven filtering.
++ Guards against double logging: output the plugin itself writes to Godot is not re-captured by the engine interceptor and logged a second time.
++ Optional integration with [ePlugin](https://github.com/enaweg/godot-epluginframework) logging (on by default), so plugin lifecycle messages are handled by ZLogger too. It is skipped automatically outside the editor, where ePlugin is not running.
 + Uses the [ePlugin Framework](https://github.com/enaweg/godot-epluginframework) to manage NuGet packages and runtime source files when the plugin is enabled.
 
 ## Examples
@@ -96,15 +101,19 @@ Set `options.EngineCategoryPrefix` if `Godot` would collide with categories your
 
 The current CI configuration builds and tests pull requests with Godot 4.7.2 and .NET 8.
 
+Tests use [gdUnit4](https://github.com/MikeSchulze/gdUnit4), which launches Godot to host them, so a Godot .NET
+executable must be available through `GODOT_BIN` for either runner below.
+
 To build and run the tests locally:
 
 ```bash
 cd src/elogger
+export GODOT_BIN=/path/to/godot
 dotnet build "eLogger.sln" --configuration Debug
 dotnet test "eLogger.sln" --configuration Debug --settings .runsettings
 ```
 
-Tests use [gdUnit4](https://github.com/MikeSchulze/gdUnit4). A Godot .NET executable must be available through `GODOT_BIN` when running the gdUnit4 test runner:
+The gdUnit4 shell runner works as well:
 
 ```bash
 export GODOT_BIN=/path/to/godot
