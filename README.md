@@ -5,7 +5,6 @@
 **Zero-allocation text and structured logging with [ZLogger](https://github.com/Cysharp/ZLogger) for [Godot](https://godotengine.org/).**
 
 [![CI](https://github.com/enaweg/godot-elogger/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/enaweg/godot-elogger/actions/workflows/ci-pr.yml)
-![Godot 4.4](https://img.shields.io/badge/Godot-v4.4-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
 ![Godot 4.5](https://img.shields.io/badge/Godot-v4.5-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
 ![Godot 4.6](https://img.shields.io/badge/Godot-v4.6-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
 ![Godot 4.7.2](https://img.shields.io/badge/Godot-v4.7.2-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
@@ -23,7 +22,8 @@ The current CI-tested configuration uses:
 + [Godot 4.7.2 .NET](https://godotengine.org/download/archive/4.7.2-stable/)
 + [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
-The project targets `net8.0`.
+The project targets `net8.0`. Godot **4.5** is the minimum supported version: engine message interception
+subclasses `Godot.Logger`, which was first exposed to scripting in 4.5.
 
 ## Installation
 
@@ -96,15 +96,19 @@ Set `options.EngineCategoryPrefix` if `Godot` would collide with categories your
 
 The current CI configuration builds and tests pull requests with Godot 4.7.2 and .NET 8.
 
+Tests use [gdUnit4](https://github.com/MikeSchulze/gdUnit4), which launches Godot to host them, so a Godot .NET
+executable must be available through `GODOT_BIN` for either runner below.
+
 To build and run the tests locally:
 
 ```bash
 cd src/elogger
+export GODOT_BIN=/path/to/godot
 dotnet build "eLogger.sln" --configuration Debug
 dotnet test "eLogger.sln" --configuration Debug --settings .runsettings
 ```
 
-Tests use [gdUnit4](https://github.com/MikeSchulze/gdUnit4). A Godot .NET executable must be available through `GODOT_BIN` when running the gdUnit4 test runner:
+The gdUnit4 shell runner works as well:
 
 ```bash
 export GODOT_BIN=/path/to/godot
