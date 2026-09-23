@@ -33,7 +33,7 @@ public static class ZLoggerGodotExtensions
         {
             var options = new ZLoggerGodotDebugOptions();
             configure(options);
-            return new ZLoggerGodotDebugLoggerProvider(options);
+            return new ZLoggerGodotDebugLoggerProvider(options, serviceProvider);
         });
         return builder;
     }
@@ -106,8 +106,21 @@ public class GodotDebugLogProcessor : IAsyncLogProcessor
     }
 }
 
-internal sealed partial class GodotOSLogger(ILogger logger) : Godot.Logger
+internal sealed partial class GodotOSLogger : Godot.Logger
 {
+    readonly Func<ILogger> loggerAccessor;
+
+    public GodotOSLogger(ILogger logger) : this(() => logger)
+    {
+    }
+
+    public GodotOSLogger(Func<ILogger> loggerAccessor)
+    {
+        this.loggerAccessor = loggerAccessor;
+    }
+
+    ILogger Logger => loggerAccessor();
+
     public override void _LogError(string function, string file, int line, string code, string rationale,
         bool editorNotify, int errorType, Array<ScriptBacktrace> scriptBacktraces)
     {
@@ -125,10 +138,10 @@ internal sealed partial class GodotOSLogger(ILogger logger) : Godot.Logger
         switch (errorType)
         {
             case (int)ErrorType.Error or (int)ErrorType.Script or (int)ErrorType.Shader:
-                logger.ZLogError($"{details}", null, function, file, line);
+                Logger.ZLogError($"{details}", null, function, file, line);
                 break;
             case (int)ErrorType.Warning:
-                logger.ZLogWarning($"{details}", null, function, file, line);
+                Logger.ZLogWarning($"{details}", null, function, file, line);
                 break;
         }
     }
@@ -143,11 +156,11 @@ internal sealed partial class GodotOSLogger(ILogger logger) : Godot.Logger
 
         if (error)
         {
-            logger.ZLogError($"{message}");
+            Logger.ZLogError($"{message}");
         }
         else
         {
-            logger.ZLogInformation($"{message}");
+            Logger.ZLogInformation($"{message}");
         }
     }
 }
@@ -155,18 +168,24 @@ internal sealed partial class GodotOSLogger(ILogger logger) : Godot.Logger
 [ProviderAlias("ZLoggerGodotDebug")]
 public class ZLoggerGodotDebugLoggerProvider : ILoggerProvider, ISupportExternalScope, IAsyncDisposable
 {
+    const string EngineLoggerCategory = "OSLogger";
+
     readonly ZLoggerOptions options;
     readonly GodotDebugLogProcessor processor;
     readonly GodotOSLogger godotLogger;
     IExternalScopeProvider? scopeProvider;
     int isDisposed;
 
-    public ZLoggerGodotDebugLoggerProvider(ZLoggerGodotDebugOptions options)
+    public ZLoggerGodotDebugLoggerProvider(ZLoggerGodotDebugOptions options) : this(options, null)
+    {
+    }
+
+    public ZLoggerGodotDebugLoggerProvider(ZLoggerGodotDebugOptions options, IServiceProvider? serviceProvider)
     {
         this.options = options;
         this.processor = new GodotDebugLogProcessor(options);
 
-        godotLogger = new GodotOSLogger(CreateLogger("OSLogger"));
+        godotLogger = new GodotOSLogger(CreateEngineLoggerAccessor(serviceProvider));
         OS.AddLogger(godotLogger);
 
         if (options.EPluginIntegration)
@@ -181,6 +200,45 @@ public class ZLoggerGodotDebugLoggerProvider : ILoggerProvider, ISupportExternal
             }
 #endif
         }
+    }
+
+    /// <summary>
+    /// Builds the logger that intercepted engine errors are written to.
+    /// <para>
+    /// Engine errors belong in every sink the application configured, not just this provider's, so the logger is
+    /// taken from the application's <see cref="ILoggerFactory" /> when one is reachable. That resolution has to
+    /// happen lazily: the factory depends on every <see cref="ILoggerProvider" />, so it cannot be resolved while
+    /// this provider is still being constructed. When the provider is built by hand there is no service provider
+    /// and it falls back to logging through itself.
+    /// </para>
+    /// </summary>
+    Func<ILogger> CreateEngineLoggerAccessor(IServiceProvider? serviceProvider)
+    {
+        if (serviceProvider is null)
+        {
+            return () => CreateLogger(EngineLoggerCategory);
+        }
+
+        ILogger? resolved = null;
+        return () =>
+        {
+            if (resolved is not null)
+            {
+                return resolved;
+            }
+
+            try
+            {
+                return resolved = serviceProvider.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger(EngineLoggerCategory);
+            }
+            catch (Exception)
+            {
+                // An engine error can arrive before the factory is ready. Capturing it must never fail, so fall
+                // back to this provider without caching - the next error retries the full factory.
+                return CreateLogger(EngineLoggerCategory);
+            }
+        };
     }
 
     public ILogger CreateLogger(string categoryName)
