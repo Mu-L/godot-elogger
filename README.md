@@ -71,6 +71,27 @@ Log levels are routed as follows:
 | `Warning` | `GD.PushWarning` |
 | `Error` / `Critical` | `GD.PushError` |
 
+Messages captured from the engine are logged through the application's `ILoggerFactory`, so they reach every sink
+you configured. Each kind gets its own category, based on the error type Godot reports:
+
+| Godot error type | Category | Level |
+|---|---|---|
+| `Error` | `Godot.Engine` | `Error` |
+| `Warning` | `Godot.Engine` | `Warning` |
+| `Script` | `Godot.Script` | `Error` |
+| `Shader` | `Godot.Shader` | `Error` |
+| engine output (`GD.Print`, `GD.PrintErr`) | `Godot.Output` | `Information` / `Error` |
+
+Standard category filtering then applies to one kind, or to all of them through the shared root:
+
+```csharp
+logging.AddFilter("Godot.Output", LogLevel.None);    // drop the GD.Print mirror
+logging.AddFilter("Godot.Shader", LogLevel.None);    // ignore shader diagnostics
+logging.AddFilter("Godot", LogLevel.Warning);        // quieten every engine message
+```
+
+Set `options.EngineCategoryPrefix` if `Godot` would collide with categories your application already uses.
+
 ## Testing
 
 The current CI configuration builds and tests pull requests with Godot 4.7.2 and .NET 8.
