@@ -185,6 +185,8 @@ public class ZLoggerGodotDebugLoggerProvider : ILoggerProvider, ISupportExternal
 
     public ILogger CreateLogger(string categoryName)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref isDisposed) != 0, this);
+
         return new ZLoggerLogger(categoryName, processor, options, options.IncludeScopes ? scopeProvider : null);
     }
 

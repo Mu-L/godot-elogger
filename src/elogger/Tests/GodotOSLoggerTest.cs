@@ -82,6 +82,26 @@ public partial class GodotOSLoggerTest
         AssertThat(recorder.Entries).IsEmpty();
     }
 
+    [TestCase]
+    public void CreateLogger_AfterDispose_Throws()
+    {
+        var provider = new ZLoggerGodotDebugLoggerProvider(
+            new ZLoggerGodotDebugOptions { EPluginIntegration = false });
+        provider.Dispose();
+
+        AssertThrown(() => provider.CreateLogger("after-dispose"))
+            .IsInstanceOf<ObjectDisposedException>();
+    }
+
+    [TestCase]
+    public void CreateLogger_BeforeDispose_Succeeds()
+    {
+        using var provider = new ZLoggerGodotDebugLoggerProvider(
+            new ZLoggerGodotDebugOptions { EPluginIntegration = false });
+
+        AssertThat(provider.CreateLogger("before-dispose")).IsNotNull();
+    }
+
     static void LogError(GodotOSLogger sut, string code, string rationale, ErrorType errorType) =>
         sut._LogError("SomeFunction", "res://some_file.cs", 42, code, rationale, false, (int)errorType,
             new Array<ScriptBacktrace>());
