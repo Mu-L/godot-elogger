@@ -212,11 +212,14 @@ public class ZLoggerGodotDebugLoggerProvider : ILoggerProvider, ISupportExternal
     /// and it falls back to logging through itself.
     /// </para>
     /// </summary>
-    Func<ILogger> CreateEngineLoggerAccessor(IServiceProvider? serviceProvider)
+    internal Func<ILogger> CreateEngineLoggerAccessor(IServiceProvider? serviceProvider)
     {
         if (serviceProvider is null)
         {
-            return () => CreateLogger(EngineLoggerCategory);
+            // Built once and reused: this accessor runs for every intercepted engine message, including every
+            // GD.Print, so allocating a logger per message would defeat ZLogger's zero-allocation design.
+            ILogger? own = null;
+            return () => own ??= CreateLogger(EngineLoggerCategory);
         }
 
         ILogger? resolved = null;

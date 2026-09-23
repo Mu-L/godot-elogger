@@ -102,6 +102,18 @@ public partial class GodotOSLoggerTest
         AssertThat(provider.CreateLogger("before-dispose")).IsNotNull();
     }
 
+    [TestCase]
+    public void EngineLoggerAccessor_WithoutServiceProvider_ReusesOneLogger()
+    {
+        using var provider = new ZLoggerGodotDebugLoggerProvider(
+            new ZLoggerGodotDebugOptions { EPluginIntegration = false });
+
+        var accessor = provider.CreateEngineLoggerAccessor(null);
+
+        // The accessor runs per engine message; it must not allocate a logger each time.
+        AssertBool(ReferenceEquals(accessor(), accessor())).IsTrue();
+    }
+
     static void LogError(GodotOSLogger sut, string code, string rationale, ErrorType errorType) =>
         sut._LogError("SomeFunction", "res://some_file.cs", 42, code, rationale, false, (int)errorType,
             new Array<ScriptBacktrace>());
