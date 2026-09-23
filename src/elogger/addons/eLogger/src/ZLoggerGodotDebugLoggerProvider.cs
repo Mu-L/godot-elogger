@@ -9,6 +9,7 @@ using Godot;
 using Godot.Collections;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ZLogger;
 using Environment = System.Environment;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -219,7 +220,7 @@ public class ZLoggerGodotDebugLoggerProvider : ILoggerProvider, ISupportExternal
             // Built once and reused: this accessor runs for every intercepted engine message, including every
             // GD.Print, so allocating a logger per message would defeat ZLogger's zero-allocation design.
             ILogger? own = null;
-            return () => own ??= CreateLogger(EngineLoggerCategory);
+            return () => own ??= CreateEngineFallbackLogger();
         }
 
         ILogger? resolved = null;
@@ -239,9 +240,19 @@ public class ZLoggerGodotDebugLoggerProvider : ILoggerProvider, ISupportExternal
             {
                 // An engine error can arrive before the factory is ready. Capturing it must never fail, so fall
                 // back to this provider without caching - the next error retries the full factory.
-                return CreateLogger(EngineLoggerCategory);
+                return CreateEngineFallbackLogger();
             }
         };
+    }
+
+    /// <summary>
+    /// Logger used when the application's factory cannot be reached. Engine callbacks run on Godot's side of the
+    /// stack, so this must never throw: once the provider is disposed, CreateLogger would raise
+    /// <see cref="ObjectDisposedException" /> into the engine, so drop the message instead.
+    /// </summary>
+    ILogger CreateEngineFallbackLogger()
+    {
+        return Volatile.Read(ref isDisposed) != 0 ? NullLogger.Instance : CreateLogger(EngineLoggerCategory);
     }
 
     public ILogger CreateLogger(string categoryName)

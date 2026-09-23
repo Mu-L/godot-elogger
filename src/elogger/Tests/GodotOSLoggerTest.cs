@@ -5,6 +5,7 @@ using Godot;
 using Godot.Collections;
 using ErrorType = Godot.Logger.ErrorType;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using static GdUnit4.Assertions;
 
 namespace Enaweg.Logger.Tests;
@@ -112,6 +113,33 @@ public partial class GodotOSLoggerTest
 
         // The accessor runs per engine message; it must not allocate a logger each time.
         AssertBool(ReferenceEquals(accessor(), accessor())).IsTrue();
+    }
+
+    [TestCase]
+    public void EngineLoggerAccessor_AfterDispose_DoesNotThrowIntoTheEngine()
+    {
+        var provider = new ZLoggerGodotDebugLoggerProvider(
+            new ZLoggerGodotDebugOptions { EPluginIntegration = false });
+        var accessor = provider.CreateEngineLoggerAccessor(null);
+        provider.Dispose();
+
+        // An engine error racing with disposal must not push ObjectDisposedException into a Godot callback.
+        // This throws, and so fails the test, if the accessor is not disposal-safe.
+        AssertThat(accessor()).IsNotNull();
+    }
+
+    [TestCase]
+    public void EngineLogger_AfterDispose_SwallowsMessagesInsteadOfThrowing()
+    {
+        var provider = new ZLoggerGodotDebugLoggerProvider(
+            new ZLoggerGodotDebugOptions { EPluginIntegration = false });
+        var sut = new GodotOSLogger(provider.CreateEngineLoggerAccessor(null));
+        provider.Dispose();
+
+        // Throws out of the Godot callback, and so fails the test, if the fallback is not disposal-safe.
+        LogError(sut, code: "after dispose", rationale: "", errorType: ErrorType.Error);
+
+        AssertBool(ReferenceEquals(provider.CreateEngineLoggerAccessor(null)(), NullLogger.Instance)).IsTrue();
     }
 
     static void LogError(GodotOSLogger sut, string code, string rationale, ErrorType errorType) =>
