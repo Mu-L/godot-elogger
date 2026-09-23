@@ -36,9 +36,14 @@ Enabling eLogger adds the required `ZLogger` and `ZString` NuGet packages to the
 ## Features
 
 + [ZLogger](https://github.com/Cysharp/ZLogger) integration for Godot: zero-allocation structured logging through `Microsoft.Extensions.Logging`.
-+ Routes log messages to Godot's output panel and error/warning overlays.
-+ Captures native engine errors and warnings, including script errors, shader errors, and `OS` messages, and feeds them back through ZLogger.
-+ Optional integration with [ePlugin](https://github.com/enaweg/godot-epluginframework) logging, so plugin lifecycle messages can also be handled by ZLogger.
++ Routes log messages to Godot's output panel and error/warning overlays — `GD.Print` for informational levels, `GD.PushWarning` and `GD.PushError` for warnings and errors, so they show up in the editor's Debugger dock.
++ Captures native engine diagnostics — engine errors and warnings, script errors, shader errors, and everything printed through `GD.Print` / `GD.PrintErr` — and feeds them back through ZLogger, so engine output reaches the file, JSON, or network sinks you configured rather than only the editor console.
++ Logs intercepted engine messages under a category per diagnostic type (`Godot.Engine`, `Godot.Script`, `Godot.Shader`, `Godot.Output`), so standard `AddFilter` rules can silence or level-limit one kind or all of them. The prefix is configurable.
++ Prefixes a message with the emitting object's instance ID when the log entry carries a `GodotObject` as its ZLogger context.
++ Cleans up exception stack traces: ZLogger and `Microsoft.Extensions.Logging` frames are dropped, types are printed in C# notation, and source locations are rewritten to `res://` paths with line numbers.
++ Configured through `ZLoggerGodotDebugOptions`, which derives from `ZLoggerOptions` — custom formatters, JSON output, timestamps, and `IncludeScopes` all work as they do in plain ZLogger. The provider implements `ISupportExternalScope`, so `BeginScope` state flows through. It is registered under the `ZLoggerGodotDebug` provider alias for configuration-driven filtering.
++ Guards against double logging: output the plugin itself writes to Godot is not re-captured by the engine interceptor and logged a second time.
++ Optional integration with [ePlugin](https://github.com/enaweg/godot-epluginframework) logging (on by default), so plugin lifecycle messages are handled by ZLogger too. It is skipped automatically outside the editor, where ePlugin is not running.
 + Uses the [ePlugin Framework](https://github.com/enaweg/godot-epluginframework) to manage NuGet packages and runtime source files when the plugin is enabled.
 
 ## Examples
