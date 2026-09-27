@@ -5,15 +5,55 @@
 **Zero-allocation text and structured logging with [ZLogger](https://github.com/Cysharp/ZLogger) for [Godot](https://godotengine.org/).**
 
 [![CI](https://github.com/enaweg/godot-elogger/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/enaweg/godot-elogger/actions/workflows/ci-pr.yml)
+![Godot 4.4](https://img.shields.io/badge/Godot-v4.4-202020?logo=godot-engine&logoColor=blue&color=lightcoral&labelColor=202020)
 ![Godot 4.5](https://img.shields.io/badge/Godot-v4.5-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
 ![Godot 4.6](https://img.shields.io/badge/Godot-v4.6-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
-![Godot 4.7.2](https://img.shields.io/badge/Godot-v4.7.2-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
+![Godot 4.7](https://img.shields.io/badge/Godot-v4.7-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
+
 ![Dotnet 8](https://img.shields.io/badge/8-02020?logo=dotnet&logoSize=auto&logoColor=purple&color=darkgreen&labelColor=E0E0E0)
 ![Dotnet 10](https://img.shields.io/badge/10-02020?logo=dotnet&logoSize=auto&logoColor=purple&color=darkgreen&labelColor=E0E0E0)
+
+![ZLogger 2.5](https://img.shields.io/badge/ZLogger-v2.5-202020?color=darkgreen&labelColor=202020)
 
 **NOTE**: This project is experimental and still a work in progress.
 
 </div>
+
+## About ZLogger
+
+[ZLogger](https://github.com/Cysharp/ZLogger) is a zero-allocation text and structured logger for .NET by
+[Cysharp](https://github.com/Cysharp), built on top of `Microsoft.Extensions.Logging`. Rather than formatting a
+message into intermediate `string` objects, it writes interpolated log calls straight into pooled UTF-8 buffers,
+so logging from a hot path — a `_Process` frame, a physics step — adds no garbage-collector pressure. Because it is
+an ordinary `Microsoft.Extensions.Logging` provider, the familiar `ILogger<T>`, category, `SetMinimumLevel` and
+`AddFilter` model still applies, and it can run alongside other logging providers.
+
+Its main features:
+
++ **Zero-allocation formatting.** The `ZLog*` methods (`ZLogInformation`, `ZLogError`, …) are built on C#
+  interpolated string handlers and [Utf8StringInterpolation](https://github.com/Cysharp/Utf8StringInterpolation),
+  writing values directly as UTF-8. A call below the enabled log level is skipped before its arguments are ever
+  formatted, so disabled `Trace`/`Debug` logging costs almost nothing.
++ **Text and structured logging from a single call.** The interpolation holes double as named fields:
+  `logger.ZLogInformation($"Player {id} spawned at {position}")` prints as readable text, and serializes `id` and
+  `position` as properties when a JSON formatter is configured — no separate message template and argument array.
++ **Pluggable formatters.** Plain text with custom prefix and suffix templates (`SetPrefixFormatter` /
+  `SetSuffixFormatter`), `System.Text.Json` output via `options.UseJsonFormatter()`, or a completely custom
+  `IZLoggerFormatter` through `options.UseFormatter(...)`. JSON output is configurable down to property names
+  (`KeyNameMutator`), scope and property inclusion, and how exceptions are emitted.
++ **Asynchronous writing.** Entries are handed to an `IAsyncLogProcessor` and flushed on a background thread
+  through a bounded buffer (`BackgroundBufferCapacity`), keeping I/O off the calling thread — the game loop, in a
+  Godot project. This is also the extension point eLogger implements to route entries into Godot.
++ **Built-in sinks.** `AddZLoggerConsole`, `AddZLoggerFile`, `AddZLoggerRollingFile` (rotating by interval or size),
+  `AddZLoggerStream`, `AddZLoggerInMemory`, and `AddZLoggerLogProcessor` for custom processors.
++ **Source-generated log methods.** `[ZLoggerMessage]` turns a `partial` method declaration into a strongly typed,
+  allocation-free logging method with a fixed message template and `EventId`.
++ **Rich log entries.** Scopes (`IncludeScopes`), event IDs, caller and thread information (`CaptureThreadInfo`),
+  timestamps from an injectable `TimeProvider`, and an arbitrary per-entry context object — the last is what
+  eLogger reads to recognize the emitting `GodotObject`.
+
+eLogger's job is to plug this pipeline into the engine: it supplies the Godot sink, mirrors native engine
+diagnostics back into ZLogger, and leaves formatter, filter and sink configuration to ZLogger itself.
 
 ## Requirements
 
