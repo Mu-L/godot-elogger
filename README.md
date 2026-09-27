@@ -5,6 +5,7 @@
 **Zero-allocation text and structured logging with [ZLogger](https://github.com/Cysharp/ZLogger) for [Godot](https://godotengine.org/).**
 
 [![CI](https://github.com/enaweg/godot-elogger/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/enaweg/godot-elogger/actions/workflows/ci-pr.yml)
+![Godot 4.4](https://img.shields.io/badge/Godot-v4.4-202020?logo=godot-engine&logoColor=blue&color=lightcoral&labelColor=202020)
 ![Godot 4.5](https://img.shields.io/badge/Godot-v4.5-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
 ![Godot 4.6](https://img.shields.io/badge/Godot-v4.6-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
 ![Godot 4.7](https://img.shields.io/badge/Godot-v4.7-202020?logo=godot-engine&logoColor=blue&color=darkgreen&labelColor=202020)
